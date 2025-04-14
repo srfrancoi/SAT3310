@@ -1,0 +1,149 @@
+# Modules
+import csv  # for reading and writing CSV files
+import requests  #allows you to make HTTP requests 
+import sys  # for system-specific parameters and functions 
+
+# Variables
+dataurl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_JMk76FaCnih6wo71SqHx9BaxOyXJ2F06_Vd6XR88xclXHuH00O40nqRcUNRdGj9uqKt7jv4ItR_m/pub?output=csv'  # URL of the Google Sheets CSV export
+datafile = 'the-state-of-michigan-michigan-technological-university-1983807'
+datapath = '/home/sat3310/Documents/Project/data/' 
+outputfile = 'donation_emails.txt'  
+mtu_emails = []  # stores emails for MTU
+michigan_gov_emails = []  # stores emails for MI.gov
+mydebug = True
+
+# Email template the """ allows us to create a multilined string
+email_template = """ 
+Email Address: {email}
+
+Subject: Donation Request
+
+Dear {firstname} {lastname},
+
+I hope this email finds you well.
+
+We are reaching out to you today to request a donation to support those in need. Your contribution would make a significant impact on a family in need of financial support going through college.
+
+You can donate online at (insert link here) or by sending a check to (address).
+
+Thank you for your consideration.
+
+Sincerely,
+
+Seth
+"""
+
+#Downloading a file from a URL and saving it locally
+def download_file(url, filepath):
+    """Downloads a file from a URL."""
+    try:
+        response = requests.get(url)  # Send a GET request to the specified URL
+        response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+        with open(filepath, 'wb') as f:  # we are opening the file in binary mode in python
+                                         # this just means that python is not going to make any
+                                         # changed to the file. \n with wt
+            f.write(response.content)  # write the content to the file
+        if mydebug:
+            print(f"Downloaded file from {url} to {filepath}")
+    #exceptions are basically just for error messages or things you don't want to be in your script
+    except requests.exceptions.RequestException as e:  # exceptions if the file doesnt download
+        print(f"Download failed: {e}")  # error if download failed
+        sys.exit(1)  # exit with error code
+
+#Process the data as in extract what data we want
+def process_data(filepath):
+    """Reads data, sorts by organization, and formats emails."""
+    # using global allows us to modify or global variables inside a function
+    # without the use of global this function could not change mtu_emails and michigan_gov_emails
+    # we would get a unboundlocalerror
+    global mtu_emails, michigan_gov_emails
+
+    try:
+        with open(filepath, 'rt') as myinputfile:  # Open the file and enter read text mode
+            myline = csv.DictReader(myinputfile, delimiter=',')  # variable for the csv file being read with , being the delimiter
+            for row in myline:  # for every row in my csv file
+                # Skip empty rows
+                # we do this by using pythons any function
+                #the any function looks at an item and sees if it is iterabel and then returns true
+                #this negates the any function takes any false items and returns them as true to continue
+                #to the next row
+                if not any(row.values()):
+                    continue
+
+                firstname = row.get("First name")  # Extract the first name from the row and so on
+                lastname = row.get("Last name") 
+                email = row.get("Email address") 
+                
+                #Basic email validation
+                #checks if the email field is empty or there is an @
+                # this is the being negated, therefore if there is nothing
+                # or no @ then this will return true and go to the next row
+                if not email or '@' not in email: 
+                    print(f"Skipping invalid email: {email}")
+                    continue
+
+                try:
+                    domain = email.split('@')[1]  # Extract the domain from the email addresses
+                                                  # so we can separate them later 
+                                                  # this takes the second part of the split with the [1]
+                except IndexError: #error incase it's not a valid email address
+                    print(f"Malformed email address: {email}")
+                    continue
+
+                if mydebug:
+                    print(email, firstname, lastname)  
+                
+                #this is add the email, first, and last names in the email format 
+                #.format is a method that takes a value and inserts it into
+                # a strings placeholder
+                formatted_email = email_template.format(
+                    email=email,firstname=firstname, lastname=lastname
+                )
+                #the .append just adds the emails to the end of the original array globally defined
+                if domain == 'mtu.edu':  # Check if domain is 'mtu.edu'
+                    mtu_emails.append(formatted_email)  # Add the email to mtu_emails list
+                elif domain == 'michigan.gov':  # Check if domain is 'michigan.gov'
+                    michigan_gov_emails.append(formatted_email)  # Add the email to michigan_gov_emails list
+    except FileNotFoundError:  # catch a potential error
+        print(f"Error: File not found at {filepath}")  # file error message
+        sys.exit(1)  # exit with error
+    except Exception as e:  # catch a potential error
+        print(f"An error occurred while processing the data: {e}")  # processsing error message
+        sys.exit(1)  # exit with error
+
+
+def write_emails_to_file(mtu_emails, michigan_gov_emails, filepath):
+    """Writes the formatted emails to a file, sorted by organization."""
+    try:
+        with open(filepath, 'w') as outfile:  # Open file in write mode
+            outfile.write("\n\n\n\nMichigan Technological University Emails:\n\n\n\n")  # header MTU emails with two newlines
+            for email in mtu_emails:  # for all emails in the mtu_emails 
+                outfile.write(email + "\n\n")  # Write the email to the file and do two newlines
+
+            outfile.write("\n\n\n\nState of Michigan Emails:\n\n\n\n\n\n")  # header for State of Michigan emails with two newlines before and after
+            for email in michigan_gov_emails:  # for all the michigan_gov_emails
+                outfile.write(email + "\n\n")  # Write the email to the file and do two newlines
+
+        if mydebug:
+            print(f"Emails written to {filepath}")  
+    except Exception as e:  #catch any other errors
+        print(f"An error occurred while writing to the file: {e}")  # error message
+        sys.exit(1)  # exit with error
+
+
+def main():
+    """Main function to orchestrate the script."""
+    filepath = datapath + datafile  # define a new path 
+    
+    # Download the file
+    download_file(dataurl, filepath)  # Call the download_file function
+
+    # Process the data 
+    process_data(filepath)  # Call the process_data function
+
+    # Write emails to the output file
+    write_emails_to_file(mtu_emails, michigan_gov_emails, datapath + outputfile)  # Call the write_emails_to_file function
+
+
+if __name__ == "__main__":
+    main()  # Call the main function

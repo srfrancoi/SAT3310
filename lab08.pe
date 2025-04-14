@@ -1,0 +1,45 @@
+#!/usr/bin/perl
+# sat3310 - lab08
+# created by srfranco@mtu.edu
+# 4/2/2025
+# Modules
+use DBI;
+
+# Variables
+my $dbpath = "/home/sat3310/Documents/labs/lab08/data/";
+my $dbfile = "wireless.dbl";
+my $dsn = "dbi:SQLite:dbname=$dbpath$dbfile";
+my $user = "";
+my $password = "";
+my $dbh = DBI->connect($dsn, $user, $password, {
+PrintError => 0,
+RaiseError => 1,
+AutoCommit => 1,
+FetchHashKeyName => 'NAME_lc',
+});
+
+# SQL
+# Testing
+# This next command is going to select the column called manuf, it is going to calculate
+# the average of the GPSBest Alt for each manuf, then its going to count the number of rows
+# in each group, then its goin gto group the rows by values in the manuf column, then its 
+# going to order the results by average altitiud in ascending order
+my $sql = 'SELECT manuf, AVG(GPSBestAlt), COUNT(*) FROM wireless GROUP BY manuf ORDER BY
+AVG(GPSBestAlt)';
+
+
+# Statement Handle Object
+my $sth = $dbh->prepare($sql);
+$sth->execute();
+
+# Main loop
+# This while loop is going to fetch one row at a time form the SQL database and returns
+# is as an array where the rows are the manuf,AVGGPS, and count. Then after every entry
+# we are going to make a new line for nicer viewing.
+while (my @row = $sth->fetchrow_array) {
+	print "Manuf: $row[0]\tAverage GPSBestAlt:$row[1]\tCount: $row[2]\n";
+}
+
+# Database Handle Disconnect
+$dbh->disconnect;
+
