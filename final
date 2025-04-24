@@ -1,0 +1,142 @@
+#!/usr/bin/python3
+# sat3310 Final
+# created by srfranco@mtu.edu
+# 4/22/2025
+
+#Modules
+import csv
+import requests
+
+# Variables and file paths used
+dataurl = 'http://pages.mtu.edu/~toarney/sat3310/final/'
+datafile = 'medicaldata.csv'
+datapath = '/home/sat3310/Documents/labs/data/'
+
+#Lists to store the data from each column
+bed = [] 
+mcdays =[] 
+tdays = []
+pcrev = []
+total_nsal = []
+fexp = []
+rural = []
+
+#Variables to store sums and calculations
+bed_sum = 0
+mcdays_sum = 0
+tdays_sum = 0
+pcrev_sum = 0
+nsal_sum = 0
+fexp_sum = 0
+rural_sum = 0
+urban_nsal = 0
+rural_nsal = 0
+mydebug = False
+
+# Download a file
+mydownloadfile = requests.get(dataurl + datafile) # downloads a file with the url
+
+# Write the downloaded file
+open(datapath + datafile, 'wb').write(mydownloadfile.content) #write the contents of the downloaded file  
+
+# Count the lines in the downloaded file
+file = open(datapath + datafile)
+reader = csv.DictReader(file)
+lines = len(list(reader))
+totallines = lines
+if mydebug:
+    print("Total amount of lines in the data is: ", totallines)
+
+# Read each line from downloaded file
+with open(datapath + datafile, 'rt') as myinputfile:
+    myline = csv.DictReader(myinputfile, delimiter=',')
+
+# Parse the datafile
+    for row in myline:
+        #getting each of the colums in the file that was downloaded
+        bed_val =  row.get('BED')  
+        mcdays_val = row.get('MCDAYS')
+        tdays_val =  row.get('TDAYS')
+        pcrev_val =  row.get('PCREV')
+        fexp_val =  row.get('FEXP')
+        rural_val = row.get('RURAL')
+        both_nsal_val =  row.get('NSAL')     
+        try:
+            #separating the rural and the urban salaries
+            #have to make the list into integer values
+            rural_int = int(rural_val)  
+            both_nsal_int = int(both_nsal_val) 
+
+            #if statement to add the salaries to a variable
+            #that is for the rural salaries and the urban salaries
+            if rural_int == 0:
+                urban_nsal += both_nsal_int
+            else:
+                rural_nsal += both_nsal_int
+            #change all the list into integer instead of strings
+            bed.append(int(bed_val))
+            mcdays.append(int(mcdays_val))
+            tdays.append(int(tdays_val))
+            pcrev.append(int(pcrev_val))
+            total_nsal.append(int(both_nsal_val))
+            fexp.append(int(fexp_val))
+            rural.append(int(rural_val))
+        except ValueError:
+            print("Invalid value found, skipping")
+            continue
+    #dubug to see what the variables are if they are being written too or changed
+    if mydebug:
+        print(row["BED"], rural_nsal, urban_nsal, bed, mcdays, tdays, pcrev,total_nsal, fexp, rural)
+        print("urban nsal" , urban_nsal)
+        print("rural nsal", rural_nsal)
+
+# Compute the results
+
+#get the sums of each of the lists
+bed_sum = sum(bed)
+mcdays_sum = sum(mcdays)
+tdays_sum = sum(tdays)
+pcrev_sum = sum(pcrev)
+nsal_sum = sum(total_nsal)
+fexp_sum = sum(fexp)
+rural_sum = sum(rural)
+
+#Calculate averages from each of the lists
+average_bed_to_facility = bed_sum / totallines
+urban_sum = totallines - rural_sum
+average_sal_rural = rural_nsal / rural_sum
+average_sal_urban = urban_nsal /urban_sum
+
+#Display the results
+
+print("Sum of BED:", bed_sum)
+print("Sum of MCDAYS:", mcdays_sum)
+print("Sum of TDAYS:", tdays_sum)
+print("Sum of PCREV:", pcrev_sum)
+print("Sum of NSAL:", nsal_sum)
+print("Sum of FEXP:", fexp_sum)
+print("Sum of Rural:", rural_sum)
+print("Sum of Urban:", urban_sum)
+print("Average beds to each facility is: ", average_bed_to_facility)
+print("Average salaray for Nurses in rural facilities: ", average_sal_rural)  
+print("Average salaray for Nurses in urban facilities: ", average_sal_urban)
+ 
+#Write the results to a file
+output_file_path = datapath + 'results.txt'
+with open(output_file_path, 'w') as output_file: #open the file for writing to
+    #add each of the printed statements to the file and make it look decent
+    output_file.write("Sum of BED: {}\n".format(bed_sum))
+    output_file.write("Sum of MCDAYS: {}\n".format(mcdays_sum))
+    output_file.write("Sum of TDAYS: {}\n".format(tdays_sum))
+    output_file.write("Sum of PCREV: {}\n".format(pcrev_sum))
+    output_file.write("Sum of NSAL: {}\n".format(nsal_sum))
+    output_file.write("Sum of FEXP: {}\n".format(fexp_sum))
+    output_file.write("Sum of Rural: {}\n".format(rural_sum))
+    output_file.write("Sum of Urban: {}\n".format(urban_sum))
+    output_file.write("Average beds to each facility is: {}\n".format(average_bed_to_facility))
+    output_file.write("Average salary for Nurses in rural facilities: {}\n".format(average_sal_rural))
+    output_file.write("Average salary for Nurses in urban facilities: {}\n".format(average_sal_urban))
+
+print(f"Results written to {output_file_path}") # print where the file is located.
+
+
